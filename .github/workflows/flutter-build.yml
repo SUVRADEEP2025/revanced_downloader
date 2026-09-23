@@ -26,7 +26,8 @@ jobs:
 
       - name: Microg
         run: |
-          gh release download --repo MorpheApp/MicroG-RE --pattern "*.apk" --dir build/app/*/*/*
+          mkdir -p build/app/outputs/flutter-apk
+          gh release download --repo MorpheApp/MicroG-RE --pattern "*.apk" --dir build/app/outputs/flutter-apk
 
       - name: Build Release APK with mise
         env:
@@ -47,9 +48,12 @@ jobs:
           name: "RDmanager v1.0.${{ github.run_number }}"
 
       - name: ntfy-notifications
+        if: ${{ always() && env.NTFY_URL != '' }}
+        env:
+          NTFY_URL: ${{ secrets.NTFY_URL }}
         uses: niniyas/ntfy-action@master
         with:
-          url: ${{ secrets.NTFY_URL }}
+          url: ${{ env.NTFY_URL }}
           topic: ${{ secrets.NTFY_TOPIC }}
           title: "RDmanager Build #${{ github.run_number }}: ${{ job.status }}"
           details: "Build  #${{ github.run_number }}: ${{ job.status }} - v1.0.${{ github.run_number }}"

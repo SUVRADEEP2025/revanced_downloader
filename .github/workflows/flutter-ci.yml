@@ -29,8 +29,11 @@ jobs:
         run: mise run ci
 
       - name: ntfy-notifications
+        if: ${{ always() && env.NTFY_URL != '' }}
+        env:
+          NTFY_URL: ${{ secrets.NTFY_URL }}
         uses: niniyas/ntfy-action@master
         with:
-          url: ${{ secrets.NTFY_URL }}
+          url: ${{ env.NTFY_URL }}
           topic: uptest
           details: "Build #${{ github.run_number }}: ${{ job.status }} - v1.0.${{ github.run_number }}"
