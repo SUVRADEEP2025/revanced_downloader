@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:introduction_screen/introduction_screen.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:rd_manager/main.dart';
-import 'package:rd_manager/repo_data.dart';
+import 'package:rd_manager/models/models.dart';
 import 'package:rd_manager/secrets.dart' as secrets;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -67,7 +67,6 @@ class _IntroScreenState extends State<IntroScreen> {
 
     final user = _userController.text.trim();
     final repo = _repoController.text.trim();
-    
 
     if (user != secrets.userName1 || repo != secrets.repoName1) {
       final newRepo = RepoData(userName: user, repoName: repo);

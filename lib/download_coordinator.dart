@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:app_installer/app_installer.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_file_downloader/flutter_file_downloader.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:rd_manager/notifications.dart';
@@ -63,8 +63,12 @@ class DownloadHistoryStore {
 }
 
 class DownloadCoordinator {
+  static const _channel = MethodChannel('com.revance.rd_manager/installer');
+
   final ValueNotifier<double> progressNotifier = ValueNotifier<double>(0.0);
-  final ValueNotifier<String> statusNotifier = ValueNotifier<String>('Starting...');
+  final ValueNotifier<String> statusNotifier = ValueNotifier<String>(
+    'Starting...',
+  );
 
   Timer? _watchdog;
   Completer<void>? _completion;
@@ -83,10 +87,7 @@ class DownloadCoordinator {
     VoidCallback? onCancelled,
   }) async {
     if (_isRunning) {
-      return Future.error(
-        StateError('A download is already in progress.'),
-      );
-      );
+      return Future.error(StateError('A download is already in progress.'));
     }
 
     if (Platform.isAndroid) {
@@ -101,10 +102,13 @@ class DownloadCoordinator {
     statusNotifier.value = 'Starting...';
     _completion = Completer<void>();
 
-    _resetWatchdog(timeout: inactivityTimeout, onTimeout: () {
-      cancelDownload();
-      onError?.call('Download timed out due to inactivity.');
-    });
+    _resetWatchdog(
+      timeout: inactivityTimeout,
+      onTimeout: () {
+        cancelDownload();
+        onError?.call('Download timed out due to inactivity.');
+      },
+    );
 
     FileDownloader.downloadFile(
       url: request.url,
@@ -116,10 +120,13 @@ class DownloadCoordinator {
       onProgress: (_, progress) {
         if (_isCancelled) return;
 
-        _resetWatchdog(timeout: inactivityTimeout, onTimeout: () {
-          cancelDownload();
-          onError?.call('Download timed out due to inactivity.');
-        });
+        _resetWatchdog(
+          timeout: inactivityTimeout,
+          onTimeout: () {
+            cancelDownload();
+            onError?.call('Download timed out due to inactivity.');
+          },
+        );
         progressNotifier.value = progress / 100;
         statusNotifier.value = '${progress.toStringAsFixed(1)}%';
       },
@@ -134,9 +141,9 @@ class DownloadCoordinator {
           return;
         }
 
+        String? failureContext;
         try {
-          var failureContext = 'processing downloaded file';
-
+          failureContext = 'processing downloaded file';
           failureContext = 'verifying download';
           statusNotifier.value = 'Verifying download...';
           await _verifyDigest(path: path, digest: request.digest);
@@ -151,7 +158,7 @@ class DownloadCoordinator {
 
           failureContext = 'launching installer';
           statusNotifier.value = 'Launching installer...';
-          await AppInstaller.installApk(path);
+          await _channel.invokeMethod('installApk', {'path': path});
           await NotificationsService.showNotification(
             id: 2,
             title: 'Installation',

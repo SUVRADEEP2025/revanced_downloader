@@ -46,6 +46,10 @@ app.*.map.json
 
 # Android signing configuration
 /android/key.properties
+/android/keystore.jks
+/android/*.jks
+*.jks
+*.keystore
 secrets.dart 
 
 sentry.properties
@@ -53,3 +57,6 @@ sentry.properties
 .dart_tool
 
 .fvm/
+.commandcode/
+.freebuff/
+.crush/

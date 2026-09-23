@@ -1,0 +1,124 @@
+# Bitbucket Pipelines — ReVance Downloader (rd_manager / Flutter)
+#
+# What this does (mirrors .github/workflows/flutter-ci.yml + flutter-build.yml):
+#   - default/branches: analyze + test + build DEBUG apk (no signing needed)
+#   - custom "release-apk" (manual): signed RELEASE apk (arm64), like the
+#     GitHub "Build & Upload" workflow
+#
+# REQUIRED repository variables (Repository settings > Pipelines > Variables,
+# tick "Secured" for secrets):
+#
+#   For debug builds (default pipeline) — OPTIONAL, has fallback:
+#     SECRETS_ENVS_BASE64   base64 of lib/secrets.dart contents
+#                           (same value as GitHub secret ENVS).
+#                           If unset, a dummy secrets.dart is generated so the
+#                           build still compiles.
+#
+#   For signed release builds (custom pipeline) — REQUIRED:
+#     SECRETS_ENVS_BASE64   (as above)
+#     KEYSTORE_BASE64       base64 of your release keystore (.jks)
+#     KEYSTORE_PASSWORD     keystore storePassword
+#     KEY_PASSWORD          keyPassword
+#     KEY_ALIAS             keyAlias
+#
+# Run a release build: Pipelines > Run pipeline > Custom > release-apk
+# Download APKs: after a run, Pipelines > build > Artifacts.
+
+image: cirrusci/flutter:stable
+
+options:
+  size: 2x # Android/Gradle needs >4GB (gradle.properties asks for 8G heap)
+
+definitions:
+  caches:
+    pubcache: ~/.pub-cache
+    gradlewrapper: ~/.gradle/wrapper
+    gradlecaches: ~/.gradle/caches
+  steps:
+    - step: &setup-secrets
+        name: Setup secrets.dart
+        script:
+          - |
+            if [ -n "$SECRETS_ENVS_BASE64" ]; then
+              echo "$SECRETS_ENVS_BASE64" | base64 -d > lib/secrets.dart
+              echo "secrets.dart restored from repository variable."
+            else
+              printf "const ntfyHost = 'https://ntfy.sh';\nconst userName1 = 'ReVanced';\nconst repoName1 = 'revanced-app';\n" > lib/secrets.dart
+              echo "No SECRETS_ENVS_BASE64 set — using dummy secrets.dart for debug build."
+            fi
+        caches:
+          - pubcache
+
+pipelines:
+  default:
+    - step:
+        name: Analyze, test & build debug APK
+        caches:
+          - pubcache
+          - gradlewrapper
+          - gradlecaches
+        script:
+          - flutter --version
+          - |
+            if [ -n "$SECRETS_ENVS_BASE64" ]; then
+              echo "$SECRETS_ENVS_BASE64" | base64 -d > lib/secrets.dart
+              echo "secrets.dart restored from repository variable."
+            else
+              printf "const ntfyHost = 'https://ntfy.sh';\nconst userName1 = 'ReVanced';\nconst repoName1 = 'revanced-app';\n" > lib/secrets.dart
+              echo "No SECRETS_ENVS_BASE64 set — using dummy secrets.dart for debug build."
+            fi
+          - flutter pub get
+          - flutter analyze
+          - flutter test
+          - flutter build apk --debug
+        artifacts:
+          - build/app/outputs/flutter-apk/*.apk
+
+  branches:
+    main:
+      - step:
+          name: Analyze, test & build debug APK
+          caches:
+            - pubcache
+            - gradlewrapper
+            - gradlecaches
+          script:
+            - flutter --version
+            - |
+              if [ -n "$SECRETS_ENVS_BASE64" ]; then
+                echo "$SECRETS_ENVS_BASE64" | base64 -d > lib/secrets.dart
+                echo "secrets.dart restored from repository variable."
+              else
+                printf "const ntfyHost = 'https://ntfy.sh';\nconst userName1 = 'ReVanced';\nconst repoName1 = 'revanced-app';\n" > lib/secrets.dart
+                echo "No SECRETS_ENVS_BASE64 set — using dummy secrets.dart for debug build."
+              fi
+            - flutter pub get
+            - flutter analyze
+            - flutter test
+            - flutter build apk --debug
+          artifacts:
+            - build/app/outputs/flutter-apk/*.apk
+
+  custom:
+    release-apk: # Manual: Pipelines > Run pipeline > Custom > release-apk
+      - step:
+          name: Build signed release APK (arm64)
+          caches:
+            - pubcache
+            - gradlewrapper
+            - gradlecaches
+          script:
+            - flutter --version
+            - echo "$SECRETS_ENVS_BASE64" | base64 -d > lib/secrets.dart
+            - echo "$KEYSTORE_BASE64" | base64 --decode > android/keystore.jks
+            - |
+              {
+                echo "storePassword=$KEYSTORE_PASSWORD";
+                echo "keyPassword=$KEY_PASSWORD";
+                echo "keyAlias=$KEY_ALIAS";
+                echo "storeFile=$BITBUCKET_CLONE_DIR/android/keystore.jks";
+              } > android/key.properties
+            - flutter pub get
+            - flutter build apk --release --target-platform android-arm64 --build-name "RDmanager v1.0.$BITBUCKET_BUILD_NUMBER" --build-number "$BITBUCKET_BUILD_NUMBER"
+          artifacts:
+            - build/app/outputs/flutter-apk/*.apk

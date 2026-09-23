@@ -10,7 +10,9 @@ import 'package:rd_manager/main.dart';
 
 void main() {
   group('App Initialization Tests', () {
-    testWidgets('App builds and renders the home screen without errors', (WidgetTester tester) async {
+    testWidgets('App builds and renders the home screen without errors', (
+      WidgetTester tester,
+    ) async {
       // Build our app and trigger a frame.
       await tester.pumpWidget(const MyApp());
 

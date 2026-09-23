@@ -1,13 +1,16 @@
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:rd_manager/download_page.dart';
-import 'package:rd_manager/intro.dart';
-import 'package:rd_manager/repo_data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:rd_manager/models/models.dart';
+import 'package:rd_manager/screens/all_apps_view.dart';
+import 'package:rd_manager/screens/download_page.dart';
+import 'package:rd_manager/screens/intro_screen.dart';
+import 'package:rd_manager/screens/repo_data_list.dart';
+import 'package:rd_manager/theme.dart';
 import 'package:rd_manager/websocket.dart';
 import 'package:rd_manager/notifications.dart';
-import 'secrets.dart';
 import 'dart:async';
 
 Future<void> main(List<String> args) async {
@@ -42,75 +45,16 @@ class _MyAppState extends State<MyApp> {
     await NotificationsService.register();
   }
 
-  ThemeData _buildTheme(ColorScheme colorScheme) {
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: colorScheme,
-      appBarTheme: AppBarTheme(
-        elevation: 0,
-        centerTitle: true,
-        backgroundColor: colorScheme.surfaceContainer,
-        foregroundColor: colorScheme.onSurface,
-      ),
-      scaffoldBackgroundColor: colorScheme.surface,
-      cardTheme: CardThemeData(
-        elevation: 1,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        color: colorScheme.surfaceContainer,
-      ),
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        contentPadding: const EdgeInsets.all(16),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colorScheme.outlineVariant),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colorScheme.primary, width: 2),
-        ),
-      ),
-      snackBarTheme: SnackBarThemeData(
-        backgroundColor: colorScheme.inverseSurface,
-        contentTextStyle: TextStyle(color: colorScheme.onInverseSurface),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return DynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
-        final lightScheme =
-            lightDynamic ?? ColorScheme.fromSeed(seedColor: Colors.green);
-        final darkScheme =
-            darkDynamic ??
-            ColorScheme.fromSeed(
-              seedColor: ThemeData.dark().colorScheme.primary,
-              brightness: ThemeData.dark().brightness,
-            );
+        final (:light, :dark) = resolveAppSchemes(lightDynamic, darkDynamic);
 
         return MaterialApp(
           title: 'ReVance Downloader',
-          theme: _buildTheme(lightScheme),
-          darkTheme: _buildTheme(darkScheme),
+          theme: buildAppTheme(light),
+          darkTheme: buildAppTheme(dark),
           themeMode: ThemeMode.system,
           home: const MyHomePage(title: 'main page :)'),
         );

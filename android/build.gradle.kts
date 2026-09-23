@@ -3,6 +3,17 @@ allprojects {
         google()
         mavenCentral()
     }
+
+    // Force all subprojects (including plugin subprojects) to use the same AGP
+    // version. Plugins declare their own AGP version in buildscript classpath,
+    // which causes Gradle to download multiple conflicting AGP versions.
+    buildscript {
+        configurations.all {
+            resolutionStrategy {
+                force("com.android.tools.build:gradle:9.0.1")
+            }
+        }
+    }
 }
 
 val newBuildDir: Directory =
