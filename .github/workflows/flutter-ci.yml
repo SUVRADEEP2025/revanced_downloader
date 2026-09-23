@@ -10,18 +10,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
+      - name: Setup mise
+        uses: jdx/mise-action@v2
         with:
-          distribution: "zulu"
-          java-version: "17"
-          cache: "gradle"
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: "stable"
-          cache: true # 2. Caches the Flutter SDK itself
+          cache: true
 
       - name: Cache Pub Dependencies
         uses: actions/cache@v4
@@ -31,20 +23,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pub-
 
-      - name: Setup Secrets
-        run: echo "${{ secrets.ENVS }}" | base64 -d > lib/secrets.dart
-
-      - name: Install Dependencies
-        run: flutter pub get
-
-      - name: Run Checks & Tests
-        run: |
-          flutter --version
-          flutter analyze
-          flutter test
-
-      - name: Build Debug APK
-        run: flutter build apk --debug
+      - name: Run CI with mise
+        env:
+          SECRETS_ENVS_BASE64: ${{ secrets.ENVS }}
+        run: mise run ci
 
       - name: ntfy-notifications
         uses: niniyas/ntfy-action@master

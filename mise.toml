@@ -2,7 +2,76 @@
 android-cli = { version = "latest", bin = "android", platforms = { linux-x64 = { checksum_url = "https://dl.google.com/android/cli/{{ version }}/linux_x86_64/android.sha256", url = "https://dl.google.com/android/cli/{{ version }}/linux_x86_64/android" }, macos-arm64 = { checksum_url = "https://dl.google.com/android/cli/{{ version }}/darwin_arm64/android.sha256", url = "https://dl.google.com/android/cli/{{ version }}/darwin_arm64/android" }, macos-x64 = { checksum_url = "https://dl.google.com/android/cli/{{ version }}/darwin_x86_64/android.sha256", url = "https://dl.google.com/android/cli/{{ version }}/darwin_x86_64/android" }, windows-arm64 = { bin = "android.exe", checksum_url = "https://dl.google.com/android/cli/{{ version }}/windows_x86_64/android.exe.sha256", url = "https://dl.google.com/android/cli/{{ version }}/windows_x86_64/android.exe" }, windows-x64 = { bin = "android.exe", checksum_url = "https://dl.google.com/android/cli/{{ version }}/windows_x86_64/android.exe.sha256", url = "https://dl.google.com/android/cli/{{ version }}/windows_x86_64/android.exe" } }, version_list_url = "https://dl.google.com/android/cli/latest/debian/dists/stable/main/binary-amd64/Packages", version_regex = '(?m)^Version: (\S+)$' }
 android-sdk = "latest"
 clang = "latest"
-dart = { version = "latest", checksum_url = "https://storage.googleapis.com/dart-archive/channels/stable/release/{{ version }}/sdk/dartsdk-{{ os() }}-{{ arch() }}-release.zip.sha256sum", url = "https://storage.googleapis.com/dart-archive/channels/stable/release/{{ version }}/sdk/dartsdk-{{ os() }}-{{ arch() }}-release.zip", version_expr = 'fromJSON(body).prefixes | filter({ # matches "^channels/stable/release/(\\d+\\.\\d+\\.\\d+)/$" }) | map({split(#, "/")[3]}) | sortVersions()', version_list_url = "https://storage.googleapis.com/storage/v1/b/dart-archive/o?prefix=channels/stable/release/&delimiter=/" }
 flutter = { version = "latest", checksum_expr = '"sha256:" + filter(fromJSON(body).releases, { #.archive endsWith filename })[0].sha256', platforms = { linux-x64 = { checksum_url = "https://storage.googleapis.com/flutter_infra_release/releases/releases_linux.json", url = "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_{{ version | trim_end(pat='-stable') }}-stable.tar.xz" }, macos-arm64 = { checksum_url = "https://storage.googleapis.com/flutter_infra_release/releases/releases_macos.json", url = "https://storage.googleapis.com/flutter_infra_release/releases/stable/macos/flutter_macos_arm64_{{ version | trim_end(pat='-stable') }}-stable.zip" }, macos-x64 = { checksum_url = "https://storage.googleapis.com/flutter_infra_release/releases/releases_macos.json", url = "https://storage.googleapis.com/flutter_infra_release/releases/stable/macos/flutter_macos_{{ version | trim_end(pat='-stable') }}-stable.zip" }, windows-x64 = { checksum_url = "https://storage.googleapis.com/flutter_infra_release/releases/releases_windows.json", url = "https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_{{ version | trim_end(pat='-stable') }}-stable.zip" } }, version_expr = 'fromJSON(body).releases | filter({ #.channel == "stable" }) | map({ replace(#.version, "-stable", "") }) | sortVersions()', version_list_url = "https://storage.googleapis.com/flutter_infra_release/releases/releases_linux.json" }
+dart = { version = "latest", checksum_url = "https://storage.googleapis.com/dart-archive/channels/stable/release/{{ version }}/sdk/dartsdk-{{ os() }}-{{ arch() }}-release.zip.sha256sum", url = "https://storage.googleapis.com/dart-archive/channels/stable/release/{{ version }}/sdk/dartsdk-{{ os() }}-{{ arch() }}-release.zip", version_expr = 'fromJSON(body).prefixes | filter({ # matches "^channels/stable/release/(\\d+\\.\\d+\\.\\d+)/$" }) | map({split(#, "/")[3]}) | sortVersions()', version_list_url = "https://storage.googleapis.com/storage/v1/b/dart-archive/o?prefix=channels/stable/release/&delimiter=/" }
 java = "21"
 kotlin = { version = "latest", asset_pattern = "kotlin-compiler-*.zip", bin_path = "kotlinc/bin" }
+
+[tasks.secrets]
+description = "Setup secrets.dart from SECRETS_ENVS_BASE64 or dummy fallback"
+run = '''
+if [ -n "$SECRETS_ENVS_BASE64" ]; then
+  echo "$SECRETS_ENVS_BASE64" | base64 -d > lib/secrets.dart
+  echo "secrets.dart restored from SECRETS_ENVS_BASE64."
+elif [ ! -f lib/secrets.dart ]; then
+  printf "const ntfyHost = 'https://ntfy.sh';\nconst userName1 = 'ReVanced';\nconst repoName1 = 'revanced-app';\n" > lib/secrets.dart
+  echo "No SECRETS_ENVS_BASE64 set — using dummy secrets.dart."
+fi
+'''
+
+[tasks.get]
+description = "Install Flutter dependencies"
+depends = ["secrets"]
+run = "flutter pub get"
+
+[tasks.analyze]
+description = "Analyze Dart and Flutter code"
+depends = ["get"]
+run = "flutter analyze"
+
+[tasks.test]
+description = "Run Flutter unit and widget tests"
+depends = ["get"]
+run = "flutter test"
+
+[tasks."build:debug"]
+description = "Build Android debug APK"
+depends = ["get"]
+run = "flutter build apk --debug"
+
+[tasks."build:release"]
+description = "Build signed Android release APK (arm64)"
+depends = ["secrets", "get"]
+run = '''
+if [ -n "$KEYSTORE_BASE64" ]; then
+  echo "$KEYSTORE_BASE64" | base64 --decode > android/keystore.jks
+fi
+if [ -n "$KEYSTORE_PASSWORD" ] && [ -n "$KEY_ALIAS" ]; then
+  cat <<EOF > android/key.properties
+storePassword=$KEYSTORE_PASSWORD
+keyPassword=$KEY_PASSWORD
+keyAlias=$KEY_ALIAS
+storeFile=${BITBUCKET_CLONE_DIR:-${GITHUB_WORKSPACE:-$PWD}}/android/keystore.jks
+EOF
+fi
+BUILD_NUM="${BITBUCKET_BUILD_NUMBER:-${GITHUB_RUN_NUMBER:-1}}"
+flutter build apk --release --target-platform android-arm64 --build-name "RDmanager v1.0.$BUILD_NUM" --build-number "$BUILD_NUM"
+'''
+
+[tasks.ci]
+description = "Run all CI verification steps (secrets, get, analyze, test, build)"
+run = '''
+mise run secrets
+mise run get
+mise run analyze
+mise run test
+mise run build:debug
+'''
+
+[tasks.doctor]
+description = "Run flutter doctor"
+run = "flutter doctor"
+
+[tasks.clean]
+description = "Clean Flutter build cache"
+run = "flutter clean"

@@ -7,6 +7,15 @@
 
 ## Essential Commands
 ```bash
+# Via mise tasks (recommended):
+mise run get             # flutter pub get
+mise run analyze         # flutter analyze
+mise run test            # flutter test (widget test only)
+mise run build:debug     # flutter build apk --debug
+mise run build:release   # signed release apk via android/key.properties
+mise run ci              # full sequential CI run (secrets, get, analyze, test, build:debug)
+
+# Or direct flutter commands:
 flutter pub get          # install deps
 flutter analyze          # lint (flutter_lints + custom rules)
 flutter test             # widget test only
