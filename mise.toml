@@ -37,12 +37,16 @@ run = "flutter test"
 [tasks."build:debug"]
 description = "Build Android debug APK"
 depends = ["get"]
-run = "flutter build apk --debug"
+run = '''
+export ANDROID_HOME=$(mise where android-sdk)
+flutter build apk --debug
+'''
 
 [tasks."build:release"]
-description = "Build signed Android release APK (arm64)"
+description = "Build signed release APK (arm64)"
 depends = ["secrets", "get"]
 run = '''
+export ANDROID_HOME=$(mise where android-sdk)
 if [ -n "$KEYSTORE_BASE64" ]; then
   echo "$KEYSTORE_BASE64" | base64 --decode > android/keystore.jks
 fi
