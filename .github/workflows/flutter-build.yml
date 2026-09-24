@@ -9,35 +9,47 @@ jobs:
     permissions:
       contents: write # Required for creating releases
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup mise
-        uses: jdx/mise-action@v2
+      - uses: actions/checkout@main
+      - uses: actions/setup-java@main
         with:
+          distribution: "zulu"
+          java-version: "21"
+          cache: "gradle"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
           cache: true
 
+      # 4. Cache Pub Dependencies
+      # Speeds up 'flutter pub get' by storing the package cache
       - name: Cache Pub dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@main
         with:
           path: ~/.pub-cache
           key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.yaml', '**/pubspec.lock') }}
           restore-keys: |
             ${{ runner.os }}-pub-
 
+      # 5. Install Dependencies
+      - run: flutter pub get
+
+      # 6. Configure Keystore & Secrets
+      # securely decodes the keystore and writes key.properties
+      - name: Setup Signing Configuration
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/keystore.jks
+          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/key.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+          echo "storeFile=${{ github.workspace }}/android/keystore.jks" >> android/key.properties
+          echo "${{ secrets.ENVS }}" | base64 -d > lib/secrets.dart
       - name: Microg
         run: |
-          mkdir -p build/app/outputs/flutter-apk
-          gh release download --repo MorpheApp/MicroG-RE --pattern "*.apk" --dir build/app/outputs/flutter-apk
+            gh release download --repo MorpheApp/MicroG-RE --pattern "*.apk" --dir build/app/*/*/*
 
-      - name: Build Release APK with mise
-        env:
-          SECRETS_ENVS_BASE64: ${{ secrets.ENVS }}
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-        run: mise run build:release
-
+      - name: Build APK
+        run: flutter build apk --release --target-platform  android-arm64 --build-name "RDmanager v1.0.${{ github.run_number }}"
       - name: Push to Releases
         uses: ncipollo/release-action@v1
         with:
@@ -47,13 +59,10 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           name: "RDmanager v1.0.${{ github.run_number }}"
 
-      - name: ntfy-notifications
-        if: ${{ always() && env.NTFY_URL != '' }}
-        env:
-          NTFY_URL: ${{ secrets.NTFY_URL }}
-        uses: niniyas/ntfy-action@master
-        with:
-          url: ${{ env.NTFY_URL }}
-          topic: ${{ secrets.NTFY_TOPIC }}
-          title: "RDmanager Build #${{ github.run_number }}: ${{ job.status }}"
-          details: "Build  #${{ github.run_number }}: ${{ job.status }} - v1.0.${{ github.run_number }}"
+      # - name: ntfy-notifications
+      #   uses: niniyas/ntfy-action@master
+      #   with:
+      #     url: ${{ secrets.NTFY_URL }}
+      #     topic: ${{ secrets.NTFY_TOPIC }}
+      #     title: "RDmanager Build #${{ github.run_number }}: ${{ job.status }}"
+      #     details: "Build  #${{ github.run_number }}: ${{ job.status }} - v1.0.${{ github.run_number }}"
