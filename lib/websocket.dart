@@ -9,9 +9,7 @@ class WebSocketService {
 
   static void init() {
     try {
-      // connecting to the websocket url from secrets.dart
       _channel = WebSocketChannel.connect(Uri.parse(ntfyHost));
-
       _channel!.stream.listen(
         (message) {
           if (message.contains('sequence_id')) {

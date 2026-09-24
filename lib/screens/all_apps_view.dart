@@ -8,7 +8,6 @@ import 'package:rd_manager/screens/repo_data_list.dart';
 import 'package:rd_manager/services/github_api.dart';
 import 'package:rd_manager/widgets/widgets.dart';
 
-/// A single entry in the aggregated All Apps list: an asset plus its repo.
 class AllAppsEntry {
   final GithubAsset asset;
   final RepoData repo;

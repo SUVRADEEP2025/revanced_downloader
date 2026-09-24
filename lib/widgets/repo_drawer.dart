@@ -15,8 +15,6 @@ class RepoDrawer extends StatelessWidget {
   });
 
   final List<RepoData> repos;
-
-  /// -1 selects the All Apps entry; otherwise a repo index.
   final int selectedIndex;
 
   final void Function(int index) onSelectRepo;

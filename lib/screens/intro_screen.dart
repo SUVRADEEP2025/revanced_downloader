@@ -68,7 +68,8 @@ class _IntroScreenState extends State<IntroScreen> {
     final user = _userController.text.trim();
     final repo = _repoController.text.trim();
 
-    if (user != secrets.userName1 || repo != secrets.repoName1) {
+    if ((user != secrets.userName1 || repo != secrets.repoName1) &&
+        (user != secrets.userName2 || repo != secrets.repoName2)) {
       final newRepo = RepoData(userName: user, repoName: repo);
       await saveRepoDataList([newRepo]);
     }

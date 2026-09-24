@@ -100,6 +100,11 @@ class RepoStorage {
         repoName: secrets.repoName1,
         isReadOnly: true,
       ),
+      RepoData(
+        userName: secrets.userName2,
+        repoName: secrets.repoName2,
+        isReadOnly: true,
+      ),
     ];
 
     for (final dr in defaultRepos) {

@@ -4,8 +4,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:rd_manager/models/github_asset.dart';
 import 'package:rd_manager/models/repo_data.dart';
 
-/// Bottom sheet offering download/install and open-in-browser actions for
-/// an asset. [repo] is optional provenance shown in the aggregated view.
 Future<void> showAssetActionSheet(
   BuildContext context, {
   required GithubAsset asset,

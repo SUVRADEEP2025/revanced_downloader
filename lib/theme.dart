@@ -52,8 +52,6 @@ ThemeData buildAppTheme(ColorScheme colorScheme) {
   );
 }
 
-/// Resolves the light/dark schemes from the system dynamic color
-/// (Android 12+ wallpaper palette), falling back to a seeded green scheme.
 ({ColorScheme light, ColorScheme dark}) resolveAppSchemes(
   ColorScheme? lightDynamic,
   ColorScheme? darkDynamic,

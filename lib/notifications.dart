@@ -31,7 +31,6 @@ class NotificationsService {
   }) async {
     await init();
 
-    // Skip notification if initialization failed
     if (!_initialized) {
       log('Notifications not initialized, skipping notification');
       return;
@@ -61,7 +60,6 @@ class NotificationsService {
   static Future<void> register() async {
     await init();
 
-    // Skip registration if initialization failed
     if (!_initialized) {
       log('Notifications not initialized, skipping registration');
       return;

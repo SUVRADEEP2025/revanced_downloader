@@ -27,8 +27,6 @@ class GithubAsset {
     );
   }
 
-  /// Heuristic: the APK/AAB file name usually embeds the package name as a
-  /// dotted segment (e.g. `com.example.app_v1.2.3_arm64.apk`).
   String? get packageName {
     for (final part in name.split('_')) {
       if (part.contains('.') && part.split('.').length >= 3) {
