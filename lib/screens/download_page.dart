@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:rd_manager/download_coordinator.dart';
 import 'package:rd_manager/models/models.dart';
 import 'package:rd_manager/screens/repo_data_list.dart';
+import 'package:rd_manager/services/asset_status_service.dart';
 import 'package:rd_manager/services/github_api.dart';
 import 'package:rd_manager/widgets/widgets.dart';
 
@@ -36,6 +37,7 @@ class _DownloadPageState extends State<DownloadPage> {
 
   bool _isLoading = true;
   List<GithubAsset> _assets = [];
+  Map<String, AssetState> _statuses = {};
   String? _errorMessage;
   String _searchQuery = '';
 
@@ -70,11 +72,17 @@ class _DownloadPageState extends State<DownloadPage> {
         widget.repoName,
         archFilter: true,
       );
+
+      // Resolve downloaded/updatable statuses in parallel with icon fetch.
+      final statusFuture = _refreshStatuses();
       if (!mounted) return;
       setState(() => _isLoading = false);
 
       // Proactively fetch metadata/icons for assets.
-      await _api.fillMissingIcons(_assets);
+      await Future.wait([
+        statusFuture,
+        _api.fillMissingIcons(_assets),
+      ]);
       if (mounted) setState(() {});
     } on DioException catch (e) {
       log(e.toString());
@@ -96,6 +104,13 @@ class _DownloadPageState extends State<DownloadPage> {
         _errorMessage = 'An unexpected error occurred.';
       });
     }
+  }
+
+  Future<void> _refreshStatuses() async {
+    await AssetStatusService.instance.refresh();
+    final statuses = await AssetStatusService.instance.resolveAll(_assets);
+    if (!mounted) return;
+    setState(() => _statuses = statuses);
   }
 
   List<GithubAsset> get _filteredAssets {
@@ -130,12 +145,14 @@ class _DownloadPageState extends State<DownloadPage> {
           name: asset.name,
           url: asset.downloadUrl,
           digest: asset.digest,
-        ),
-        onCompleted: () {
-          if (!mounted) return;
-          if (Navigator.canPop(context)) Navigator.pop(context);
-          _snack('Installation started');
-        },
+        ),                        onCompleted: () {
+                          if (!mounted) return;
+                          if (Navigator.canPop(context)) Navigator.pop(context);
+                          _snack('Installation started');
+                          // Mark the asset as downloaded right away.
+                          AssetStatusService.instance.invalidateDownloads();
+                          _refreshStatuses();
+                        },
         onError: (message) {
           if (!mounted) return;
           if (Navigator.canPop(context)) Navigator.pop(context);
@@ -245,9 +262,18 @@ class _DownloadPageState extends State<DownloadPage> {
                     itemCount: _filteredAssets.length,
                     itemBuilder: (context, index) {
                       final asset = _filteredAssets[index];
+                      final state = _statuses['${asset.id}'];
                       return AssetListItem(
                         asset: asset,
                         onTap: () => _showActionOptions(asset),
+                        onLongPress: () =>
+                            shareAssetLink(context, asset.downloadUrl),
+                        status: switch (state) {
+                          AssetState.downloaded => AssetStatus.downloaded,
+                          AssetState.updatable => AssetStatus.updatable,
+                          AssetState.upToDate => AssetStatus.upToDate,
+                          _ => AssetStatus.none,
+                        },
                       );
                     },
                   ),

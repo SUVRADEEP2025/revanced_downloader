@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:rd_manager/models/github_asset.dart';
 import 'package:rd_manager/models/repo_data.dart';
+import 'package:rd_manager/services/share_service.dart';
 
 Future<void> showAssetActionSheet(
   BuildContext context, {
@@ -44,6 +45,7 @@ Future<void> showAssetActionSheet(
               const SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildButton(
                     sheetContext,
@@ -53,6 +55,16 @@ Future<void> showAssetActionSheet(
                     onTap: () {
                       Navigator.pop(sheetContext);
                       onDownload(asset);
+                    },
+                  ),
+                  _buildButton(
+                    sheetContext,
+                    icon: Icons.ios_share,
+                    label: 'Share Link',
+                    color: Theme.of(sheetContext).colorScheme.secondary,
+                    onTap: () async {
+                      Navigator.pop(sheetContext);
+                      await shareAssetLink(sheetContext, asset.downloadUrl);
                     },
                   ),
                   _buildButton(
@@ -73,6 +85,19 @@ Future<void> showAssetActionSheet(
       );
     },
   );
+}
+
+/// Shares [url] via the Android share sheet, surfacing errors as a snackbar.
+Future<void> shareAssetLink(BuildContext context, String url) async {
+  try {
+    await ShareService.shareUrl(url);
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error sharing link: $e')),
+      );
+    }
+  }
 }
 
 Future<void> _openInBrowser(BuildContext context, String url) async {

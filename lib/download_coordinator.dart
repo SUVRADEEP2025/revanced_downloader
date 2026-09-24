@@ -56,6 +56,13 @@ class DownloadHistoryStore {
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
+  /// Returns the set of asset file names present in the history.
+  Future<Set<String>> getDownloadedNames() async {
+    final db = await database;
+    final rows = await db.query('downloads', columns: ['name']);
+    return rows.map((row) => row['name'] as String).toSet();
+  }
+
   Future<void> close() async {
     await _db?.close();
     _db = null;

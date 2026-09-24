@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:rd_manager/download_coordinator.dart';
 import 'package:rd_manager/models/models.dart';
 import 'package:rd_manager/screens/repo_data_list.dart';
+import 'package:rd_manager/services/asset_status_service.dart';
 import 'package:rd_manager/services/github_api.dart';
 import 'package:rd_manager/widgets/widgets.dart';
 
@@ -35,6 +36,7 @@ class _AllAppsViewState extends State<AllAppsView> {
 
   bool _isLoading = true;
   List<AllAppsEntry> _entries = [];
+  Map<String, AssetState> _statuses = {};
   String? _errorMessage;
   String _searchQuery = '';
 
@@ -61,19 +63,25 @@ class _AllAppsViewState extends State<AllAppsView> {
 
       final List<AllAppsEntry> entries = [];
 
-      // Fetch from all repositories.
-      for (final repo in widget.repos) {
-        try {
-          final assets = await _api.fetchLatestAssets(
-            repo.userName,
-            repo.repoName,
-            archFilter: false,
-          );
-          for (final asset in assets) {
-            entries.add(AllAppsEntry(asset: asset, repo: repo));
+      // Fetch from all repositories in parallel.
+      final results = await Future.wait(
+        widget.repos.map((repo) async {
+          try {
+            final assets = await _api.fetchLatestAssets(
+              repo.userName,
+              repo.repoName,
+              archFilter: false,
+            );
+            return MapEntry(repo, assets);
+          } catch (e) {
+            log('Error fetching from ${repo.userName}/${repo.repoName}: $e');
+            return MapEntry<RepoData, List<GithubAsset>>(repo, []);
           }
-        } catch (e) {
-          log('Error fetching from ${repo.userName}/${repo.repoName}: $e');
+        }),
+      );
+      for (final entry in results) {
+        for (final asset in entry.value) {
+          entries.add(AllAppsEntry(asset: asset, repo: entry.key));
         }
       }
 
@@ -87,8 +95,11 @@ class _AllAppsViewState extends State<AllAppsView> {
         }
       });
 
-      // Fetch metadata for All Apps.
-      await _api.fillMissingIcons(entries.map((e) => e.asset).toList());
+      // Fetch metadata and statuses for All Apps in parallel.
+      await Future.wait([
+        _api.fillMissingIcons(entries.map((e) => e.asset).toList()),
+        _refreshStatuses(),
+      ]);
       if (mounted) setState(() {});
     } catch (e) {
       log(e.toString());
@@ -98,6 +109,14 @@ class _AllAppsViewState extends State<AllAppsView> {
         _errorMessage = 'An unexpected error occurred.';
       });
     }
+  }
+
+  Future<void> _refreshStatuses() async {
+    await AssetStatusService.instance.refresh();
+    final statuses = await AssetStatusService.instance
+        .resolveAll(_entries.map((e) => e.asset));
+    if (!mounted) return;
+    setState(() => _statuses = statuses);
   }
 
   List<AllAppsEntry> get _filteredEntries {
@@ -145,6 +164,9 @@ class _AllAppsViewState extends State<AllAppsView> {
           if (!mounted) return;
           if (Navigator.canPop(context)) Navigator.pop(context);
           _snack('Installation started');
+          // Mark the asset as downloaded right away.
+          AssetStatusService.instance.invalidateDownloads();
+          _refreshStatuses();
         },
         onError: (message) {
           if (!mounted) return;
@@ -254,10 +276,19 @@ class _AllAppsViewState extends State<AllAppsView> {
                       itemCount: _filteredEntries.length,
                       itemBuilder: (context, index) {
                         final entry = _filteredEntries[index];
+                        final state = _statuses['${entry.asset.id}'];
                         return AssetListItem(
                           asset: entry.asset,
                           repo: entry.repo,
                           onTap: () => _showActionOptions(entry),
+                          onLongPress: () =>
+                              shareAssetLink(context, entry.asset.downloadUrl),
+                          status: switch (state) {
+                            AssetState.downloaded => AssetStatus.downloaded,
+                            AssetState.updatable => AssetStatus.updatable,
+                            AssetState.upToDate => AssetStatus.upToDate,
+                            _ => AssetStatus.none,
+                          },
                         );
                       },
                     ),
