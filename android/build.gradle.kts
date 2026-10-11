@@ -29,11 +29,11 @@ subprojects {
         project.evaluationDependsOn(":app")
     }
 
-    // Force every Android library/application subproject (e.g. sentry_flutter,
-    // flutter_file_downloader which hardcode compileSdk 34) to compile against
-    // SDK 36+. Otherwise `package_info_plus >= 10` fails checkAarMetadata with:
-    // "Dependency ':package_info_plus' requires ... compile against version 36
-    //  or later ... :sentry_flutter is currently compiled against android-34."
+    // Force every Android library/application subproject (e.g. sentry_flutter
+    // which hardcodes compileSdk 36, flutter_file_downloader 34) to compile
+    // against SDK 37+. Otherwise checkAarMetadata fails with:
+    // "Dependency ':jni' requires ... compile against version 37 or later
+    //  or later ... :sentry_flutter is currently compiled against android-36."
     // Uses reflection so this script compiles without an AGP dependency.
     afterEvaluate {
         extensions.findByName("android")?.let { androidExt ->
@@ -41,7 +41,7 @@ subprojects {
                 val getCompileSdk =
                     androidExt.javaClass.getMethod("getCompileSdk")
                 val current = getCompileSdk.invoke(androidExt) as? Int ?: 0
-                if (current in 1..35) {
+                if (current in 1..36) {
                     androidExt.javaClass
                         .getMethod("setCompileSdk", Int::class.javaPrimitiveType)
                         .invoke(androidExt, 37)
@@ -53,7 +53,7 @@ subprojects {
                     val current =
                         getV.invoke(androidExt)?.toString()
                             ?.removePrefix("android-")?.toIntOrNull() ?: 0
-                    if (current in 1..35) {
+                    if (current in 1..36) {
                         try {
                             androidExt.javaClass
                                 .getMethod(
