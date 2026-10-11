@@ -7,3 +7,11 @@ dart = { version = "latest", checksum_url = "https://storage.googleapis.com/dart
 java = "21"
 kotlin = { version = "latest", asset_pattern = "kotlin-compiler-*.zip", bin_path = "kotlinc/bin" }
 sentry-cli = "latest"
+"npm:surge" = "latest"
+
+[settings]
+experimental = true
+
+[tasks.deploy]
+run = "surge landing/ revancedownloader.surge.sh"
+description = "Deploy the landing page to static site"

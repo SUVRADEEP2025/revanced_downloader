@@ -38,6 +38,7 @@ flutter build apk --release   # signed via android/key.properties
 - `theme.dart` — `buildAppTheme(ColorScheme)` + `resolveAppSchemes()` (dynamic color + seed fallback); only place defining ThemeData
 - `models/` — data types + persistence: `github_asset.dart` (`GithubAsset`, `packageName` heuristic), `repo_data.dart` (`RepoData`, `RepoStorage`, `loadRepoDataList`/`saveRepoDataList`), `models.dart` barrel
 - `services/github_api.dart` — `GithubApi` (Dio client: `fetchLatestAssets(userName, repoName, {archFilter})`, `fillMissingIcons`, `close`), `AppMeta`, `fetchAppIcon` (Aptoide metadata lookup)
+- `services/agent_tracing.dart` — `AgentTracing` + `GenAiSpan`: manual Agent Tracing (GenAI-convention `gen_ai.*` spans, `gen_ai.conversation.id` grouping, `setUser` attribution). The Flutter SDK ships no AI integration, so every LLM/tool/agent call must be wrapped in `AgentTracing.chat/tool/agent`; verified by `test/agent_tracing_test.dart`
 - `screens/` — `download_page.dart`, `all_apps_view.dart` (both use `AllAppsEntry`-style view models and shared widgets), `repo_data_list.dart` (repo CRUD + search), `intro_screen.dart`
 - `widgets/` — shared UI via `widgets.dart` barrel: `AppSearchBar`, `AppIcon`, `AssetListItem`, `showAssetActionSheet`, `showDownloadProgressDialog`, `EmptyState`, `RepoDrawer`
 - `utils/format.dart` — `formatBytes`

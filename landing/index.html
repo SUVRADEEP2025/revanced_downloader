@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ReVance Downloader — ReVanced Manager, minus the compiling</title>
+<meta name="description" content="ReVance Downloader browses ReVanced GitHub releases, checks the digest, and installs the APK. No patching, no compiling, no Java toolchain on your phone.">
+<meta property="og:title" content="ReVance Downloader">
+<meta property="og:description" content="ReVanced Manager, minus the compiling. Lists GitHub builds, verifies the digest, installs the APK.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#6a3de8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131021" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="icon.png" type="image/png">
+<style>
+  :root {
+    --bg: #faf6ef;
+    --bg-soft: #fffdf8;
+    --card: #fffdf9;
+    --ink: #221a33;
+    --ink-soft: #5f5470;
+    --ink-faint: #8a7f99;
+    --purple: #6a3de8;
+    --purple-deep: #4f26c4;
+    --purple-soft: #ece4ff;
+    --gold: #a86a12;
+    --gold-soft: #f8ecd4;
+    --rule: #e4d8c6;
+    --rule-soft: #efe5d4;
+    --ok: #157f3d;
+    --ok-bg: #e2f4e7;
+    --shadow: 0 20px 60px -20px rgba(80, 45, 180, .28), 0 2px 8px rgba(34, 26, 51, .08);
+    --shadow-sm: 0 8px 24px -10px rgba(80, 45, 180, .22);
+    --r-lg: 20px;
+    --r-md: 14px;
+    --r-sm: 9px;
+    --mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", Menlo, Consolas, monospace;
+    --sans: ui-sans-system, -apple-system, "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color-scheme: light;
+  }
+  [data-theme="dark"], html.dark {
+    --bg: #131021;
+    --bg-soft: #1a1629;
+    --card: #1e1930;
+    --ink: #f1ecff;
+    --ink-soft: #b9aecf;
+    --ink-faint: #857a9e;
+    --purple: #9a7bff;
+    --purple-deep: #b39bff;
+    --purple-soft: #2b2350;
+    --gold: #e0a63e;
+    --gold-soft: #3a2d14;
+    --rule: #332c4a;
+    --rule-soft: #292341;
+    --ok: #5fd68a;
+    --ok-bg: #173a25;
+    --shadow: 0 24px 70px -24px rgba(0, 0, 0, .7), 0 2px 8px rgba(0,0,0,.4);
+    --shadow-sm: 0 10px 28px -12px rgba(0,0,0,.6);
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    html[data-theme="auto"] {
+      --bg: #131021;
+      --bg-soft: #1a1629;
+      --card: #1e1930;
+      --ink: #f1ecff;
+      --ink-soft: #b9aecf;
+      --ink-faint: #857a9e;
+      --purple: #9a7bff;
+      --purple-deep: #b39bff;
+      --purple-soft: #2b2350;
+      --gold: #e0a63e;
+      --gold-soft: #3a2d14;
+      --rule: #332c4a;
+      --rule-soft: #292341;
+      --ok: #5fd68a;
+      --ok-bg: #173a25;
+      --shadow: 0 24px 70px -24px rgba(0, 0, 0, .7), 0 2px 8px rgba(0,0,0,.4);
+      --shadow-sm: 0 10px 28px -12px rgba(0,0,0,.6);
+      color-scheme: dark;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 84px; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16.5px/1.65 var(--sans);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  ::selection { background: var(--purple); color: #fff; }
+  a { color: var(--purple); text-underline-offset: 3px; }
+  code, kbd { font-family: var(--mono); font-size: .88em; }
+
+  .wrap { max-width: 72rem; margin: 0 auto; padding: 0 clamp(1.1rem, 4vw, 2rem); }
+  .mono-label {
+    font-family: var(--mono);
+    font-size: .74rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+
+  /* ---------- backdrop ---------- */
+  .glow { position: fixed; inset: 0; pointer-events: none; z-index: -1; overflow: hidden; }
+  .glow i { position: absolute; border-radius: 50%; filter: blur(90px); opacity: .5; }
+  .glow i:nth-child(1) { width: 560px; height: 560px; left: -160px; top: -180px; background: radial-gradient(circle, #c9b3ff, transparent 70%); }
+  .glow i:nth-child(2) { width: 520px; height: 520px; right: -140px; top: 8vh; background: radial-gradient(circle, #ffdf9e, transparent 70%); opacity: .45; }
+  .glow i:nth-child(3) { width: 640px; height: 420px; left: 30%; bottom: -220px; background: radial-gradient(circle, #b7a6ff, transparent 70%); opacity: .28; }
+  html[data-theme="dark"] .glow i, html.dark .glow i { opacity: .22; }
+
+  /* ---------- header ---------- */
+  header.site {
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: blur(14px) saturate(1.2);
+    -webkit-backdrop-filter: blur(14px) saturate(1.2);
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  .bar { display: flex; align-items: center; gap: .8rem; padding: .8rem 0; }
+  .brand { display: flex; align-items: center; gap: .65rem; text-decoration: none; color: inherit; }
+  .brand img { width: 36px; height: 36px; border-radius: 10px; display: block; box-shadow: var(--shadow-sm); }
+  .brand b { font-family: var(--mono); font-size: .95rem; letter-spacing: -.02em; }
+  .brand small { display: block; font-family: var(--mono); font-size: .68rem; color: var(--ink-faint); letter-spacing: .08em; text-transform: uppercase; line-height: 1; }
+  nav.links { margin-left: auto; display: flex; align-items: center; gap: 1.1rem; font-size: .92rem; }
+  nav.links a { color: var(--ink-soft); text-decoration: none; font-weight: 500; }
+  nav.links a:hover { color: var(--purple); }
+  .pill-cta {
+    border: 1.5px solid var(--purple); color: var(--purple) !important;
+    padding: .32rem .8rem; border-radius: 999px; font-weight: 700 !important;
+  }
+  .pill-cta:hover { background: var(--purple); color: #fff !important; }
+  .theme-btn {
+    border: 1px solid var(--rule); background: var(--card); color: var(--ink-soft);
+    width: 38px; height: 38px; border-radius: 999px; cursor: pointer;
+    display: grid; place-items: center; font-size: 1.05rem;
+  }
+  .theme-btn:hover { border-color: var(--purple); color: var(--purple); }
+  @media (max-width: 42rem) { nav.links a.hide-s { display: none; } }
+
+  /* ---------- hero ---------- */
+  .hero { display: grid; grid-template-columns: 1.08fr .92fr; gap: clamp(1.5rem, 4vw, 3.5rem); align-items: center; padding: clamp(2.2rem, 6vw, 4.5rem) 0 1.5rem; }
+  @media (max-width: 58rem) { .hero { grid-template-columns: 1fr; } }
+  .badges { display: flex; flex-wrap: wrap; gap: .45rem; margin-bottom: 1rem; }
+  .badge {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .06em;
+    border: 1px solid var(--rule); background: var(--card);
+    padding: .28rem .65rem; border-radius: 999px; color: var(--ink-soft);
+    display: inline-flex; align-items: center; gap: .4rem;
+  }
+  .badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px var(--ok-bg); }
+  h1 {
+    font-size: clamp(2.3rem, 6vw, 3.7rem);
+    line-height: .98; letter-spacing: -.045em; margin: 0 0 .9rem; font-weight: 800;
+  }
+  h1 .grad {
+    background: linear-gradient(92deg, var(--purple) 10%, #b06ee8 55%, var(--gold) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  h1 .sub { display: block; font-size: clamp(1.05rem, 2.4vw, 1.3rem); font-weight: 500; letter-spacing: -.02em; color: var(--ink-soft); margin-top: .7rem; line-height: 1.4; }
+  .lede { color: var(--ink-soft); font-size: 1.05rem; max-width: 34rem; margin: 0 0 1.5rem; }
+  .lede strong { color: var(--ink); }
+
+  .cta-row { display: flex; flex-wrap: wrap; gap: .7rem; align-items: stretch; }
+  .btn {
+    display: inline-flex; align-items: center; gap: .55rem;
+    padding: .8rem 1.25rem; border-radius: 14px;
+    background: linear-gradient(180deg, var(--purple), var(--purple-deep));
+    color: #fff; text-decoration: none; font-weight: 750; font-size: .98rem;
+    border: 1px solid transparent; box-shadow: var(--shadow-sm);
+    transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+  }
+  .btn:hover { transform: translateY(-1px); filter: brightness(1.05); box-shadow: var(--shadow); }
+  .btn:active { transform: translateY(0); }
+  html[data-theme="dark"] .btn, html.dark .btn { color: #17122b; }
+  @media (prefers-color-scheme: dark) { html[data-theme="auto"] .btn { color: #17122b; } }
+  .btn.ghost { background: var(--card); color: var(--ink); border-color: var(--rule); box-shadow: none; }
+  .btn.ghost:hover { border-color: var(--purple); color: var(--purple); box-shadow: none; }
+  .btn.small { padding: .55rem .9rem; font-size: .88rem; border-radius: 11px; }
+  .dl-sub { font-family: var(--mono); font-size: .78rem; color: var(--ink-faint); margin-top: .7rem; display: flex; flex-wrap: wrap; gap: .4rem .8rem; align-items: center; }
+  .dl-sub code { background: var(--purple-soft); color: var(--purple-deep); padding: .12rem .45rem; border-radius: 6px; }
+  html[data-theme="dark"] .dl-sub code, html.dark .dl-sub code { color: var(--purple-deep); }
+  .copy-btn { border: 1px solid var(--rule); background: transparent; color: var(--ink-soft); border-radius: 7px; font-family: var(--mono); font-size: .72rem; padding: .2rem .55rem; cursor: pointer; }
+  .copy-btn:hover { border-color: var(--purple); color: var(--purple); }
+
+  .ticks { display: flex; flex-wrap: wrap; gap: .5rem 1.1rem; margin: 1.3rem 0 0; padding: 0; list-style: none; color: var(--ink-soft); font-size: .9rem; }
+  .ticks li { display: flex; gap: .45rem; align-items: center; }
+  .ticks svg { width: 17px; height: 17px; flex: none; }
+
+  .marquee { margin-top: 1.6rem; border: 1px dashed var(--rule); border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--card) 80%, transparent); white-space: nowrap; }
+  .marquee div { display: inline-block; padding: .5rem 0; font-family: var(--mono); font-size: .76rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); animation: slide 26s linear infinite; }
+  .marquee span { margin: 0 1.1rem; }
+  .marquee b { color: var(--gold); font-weight: 700; }
+  @keyframes slide { to { transform: translateX(-50%); } }
+  @media (prefers-reduced-motion: reduce) { .marquee div { animation: none; } html { scroll-behavior: auto; } }
+
+  /* ---------- phone ---------- */
+  .phone-wrap { display: flex; justify-content: center; position: relative; }
+  .phone {
+    width: min(300px, 78vw); border-radius: 44px; padding: 12px;
+    background: linear-gradient(180deg, #2b2440, #14101f);
+    box-shadow: var(--shadow); border: 1px solid rgba(255,255,255,.14);
+    position: relative;
+  }
+  .phone::after { content: ""; position: absolute; inset: -22px -22px auto auto; width: 140px; height: 140px; background: radial-gradient(circle, rgba(106,61,232,.5), transparent 70%); filter: blur(10px); z-index: -1; }
+  .screen { background: #fbf7ef; border-radius: 34px; overflow: hidden; color: #241c33; }
+  .screen-top { background: linear-gradient(135deg, #6a3de8, #8b5cf6 60%, #c084fc); padding: 14px 14px 36px; color: #fff; position: relative; }
+  .notch { width: 96px; height: 22px; background: #14101f; border-radius: 999px; margin: 0 auto 10px; }
+  .screen-top h3 { margin: 0; font-size: 1rem; letter-spacing: -.02em; }
+  .screen-top p { margin: .15rem 0 0; font-size: .72rem; opacity: .85; }
+  .search { margin: -22px 12px 0; background: #fff; border-radius: 12px; padding: .55rem .7rem; font-size: .75rem; color: #8a7f99; box-shadow: 0 6px 18px rgba(0,0,0,.14); display: flex; gap: .45rem; align-items: center; position: relative; z-index: 2; }
+  .app-row { display: flex; gap: .6rem; align-items: center; background: #fff; margin: .55rem .7rem; padding: .55rem .6rem; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+  .app-row .ic { width: 36px; height: 36px; border-radius: 10px; flex: none; display: grid; place-items: center; color: #fff; font-weight: 800; font-size: .8rem; }
+  .app-row b { display: block; font-size: .76rem; line-height: 1.2; }
+  .app-row span { font-size: .66rem; color: #8a7f99; font-family: var(--mono); }
+  .app-row .go { margin-left: auto; font-size: .66rem; font-weight: 800; background: #ece4ff; color: #6a3de8; border-radius: 999px; padding: .25rem .6rem; }
+  .verify { margin: .55rem .7rem .8rem; background: #17122b; color: #e9e2ff; border-radius: 14px; padding: .65rem .7rem; }
+  .verify b { font-size: .7rem; display: flex; align-items: center; gap: .4rem; }
+  .verify .bar-track { height: 7px; background: rgba(255,255,255,.16); border-radius: 99px; margin-top: .55rem; overflow: hidden; }
+  .verify .bar-fill { height: 100%; width: 72%; border-radius: 99px; background: linear-gradient(90deg, #9a7bff, #5fd68a); animation: fill 3.2s ease-in-out infinite alternate; }
+  .verify small { font-family: var(--mono); font-size: .62rem; opacity: .75; }
+  @keyframes fill { from { width: 34%; } to { width: 86%; } }
+  .float-card {
+    position: absolute; background: var(--card); border: 1px solid var(--rule);
+    border-radius: 14px; padding: .6rem .75rem; box-shadow: var(--shadow);
+    font-family: var(--mono); font-size: .72rem; color: var(--ink-soft);
+    display: flex; gap: .5rem; align-items: center;
+  }
+  .float-card b { color: var(--ink); }
+  .f1 { left: -8px; top: 22%; animation: float 5s ease-in-out infinite; }
+  .f2 { right: -6px; bottom: 16%; animation: float 6s ease-in-out infinite reverse; }
+  @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+  @media (max-width: 58rem) { .f1 { left: 0; } .f2 { right: 0; } }
+  @media (prefers-reduced-motion: reduce) { .verify .bar-fill, .float-card { animation: none; } }
+
+  /* ---------- sections ---------- */
+  section.block { padding: 2.6rem 0 .4rem; }
+  .sec-head { display: flex; align-items: baseline; gap: .9rem; margin-bottom: 1.4rem; flex-wrap: wrap; }
+  .sec-head h2 { margin: 0; font-size: 1.55rem; letter-spacing: -.03em; font-weight: 800; }
+  .sec-head p { margin: 0; color: var(--ink-soft); max-width: 36rem; }
+  .sec-num { font-family: var(--mono); font-size: .74rem; color: var(--gold); border: 1px solid var(--rule); padding: .2rem .6rem; border-radius: 999px; background: var(--card); }
+
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .9rem; }
+  @media (max-width: 58rem) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 38rem) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--card); border: 1px solid var(--rule-soft);
+    border-radius: var(--r-lg); padding: 1.15rem 1.15rem 1.05rem;
+    transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+    position: relative; overflow: hidden;
+  }
+  .card:hover { transform: translateY(-3px); border-color: var(--purple); box-shadow: var(--shadow-sm); }
+  .card .ico { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--purple-soft); color: var(--purple-deep); margin-bottom: .8rem; }
+  html[data-theme="dark"] .card .ico, html.dark .card .ico { color: var(--purple-deep); }
+  .card .ico svg { width: 21px; height: 21px; }
+  .card h3 { margin: 0 0 .35rem; font-size: 1rem; letter-spacing: -.02em; }
+  .card p { margin: 0; color: var(--ink-soft); font-size: .92rem; }
+  .card code { background: var(--purple-soft); padding: .05rem .35rem; border-radius: 5px; color: inherit; }
+
+  /* steps */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: .9rem; counter-reset: step; list-style: none; margin: 0; padding: 0; }
+  @media (max-width: 52rem) { .steps { grid-template-columns: 1fr; } }
+  .steps li { background: var(--card); border: 1px solid var(--rule-soft); border-radius: var(--r-lg); padding: 1.2rem; position: relative; overflow: hidden; }
+  .steps li::before {
+    counter-increment: step; content: "0" counter(step);
+    font-family: var(--mono); font-weight: 700; font-size: 2rem; letter-spacing: -.04em;
+    background: linear-gradient(180deg, var(--purple), transparent);
+    -webkit-background-clip: text; background-clip: text; color: transparent; opacity: .5;
+    display: block; margin-bottom: .4rem;
+  }
+  .steps b { color: var(--purple); }
+  .steps h3 { margin: 0 0 .35rem; font-size: 1.02rem; }
+  .steps p { margin: 0; color: var(--ink-soft); font-size: .93rem; }
+
+  /* release + note */
+  .two { display: grid; grid-template-columns: 1.1fr .9fr; gap: .9rem; align-items: stretch; }
+  @media (max-width: 58rem) { .two { grid-template-columns: 1fr; } }
+  .release {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--card) 100%, transparent), color-mix(in srgb, var(--purple-soft) 45%, var(--card)));
+    border: 1px solid var(--rule-soft); border-radius: var(--r-lg); padding: 1.25rem;
+  }
+  .release-top { display: flex; align-items: center; gap: .7rem; flex-wrap: wrap; }
+  .live { display: inline-flex; align-items: center; gap: .45rem; font-family: var(--mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; background: var(--ok-bg); color: var(--ok); border-radius: 999px; padding: .28rem .7rem; font-weight: 700; }
+  .live i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: blink 1.6s infinite; }
+  @keyframes blink { 50% { opacity: .35; } }
+  .rel-ver { font-family: var(--mono); font-weight: 700; font-size: 1.05rem; }
+  .rel-date { color: var(--ink-faint); font-size: .84rem; font-family: var(--mono); }
+  #assetList { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: .5rem; }
+  #assetList li { display: flex; align-items: center; gap: .7rem; background: color-mix(in srgb, var(--bg-soft) 85%, transparent); border: 1px solid var(--rule-soft); border-radius: 12px; padding: .6rem .7rem; font-size: .88rem; }
+  #assetList .nm { font-family: var(--mono); font-size: .76rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #assetList .sz { margin-left: auto; font-family: var(--mono); font-size: .72rem; color: var(--ink-faint); flex: none; }
+  #assetList a.dl { flex: none; text-decoration: none; font-weight: 700; font-size: .78rem; border: 1px solid var(--purple); border-radius: 8px; padding: .28rem .6rem; }
+  #assetList a.dl:hover { background: var(--purple); color: #fff; }
+  .rel-foot { margin-top: .9rem; display: flex; gap: .6rem; flex-wrap: wrap; }
+  .note-card { background: var(--card); border: 1px solid var(--rule-soft); border-left: 5px solid var(--gold); border-radius: 0 var(--r-lg) var(--r-lg) 0; padding: 1.2rem 1.25rem; align-self: start; }
+  .note-card h3 { margin: 0 0 .4rem; }
+  .note-card p { margin: 0; color: var(--ink-soft); font-size: .93rem; }
+  .kbd-row { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .8rem; }
+  kbd { border: 1px solid var(--rule); border-bottom-width: 2px; background: var(--bg-soft); border-radius: 6px; padding: .1rem .45rem; }
+
+  /* faq */
+  .faq { border: 1px solid var(--rule-soft); border-radius: var(--r-lg); overflow: hidden; background: var(--card); }
+  details { border-top: 1px solid var(--rule-soft); padding: 0; }
+  details:first-child { border-top: 0; }
+  details summary { cursor: pointer; padding: 1rem 1.2rem; font-weight: 700; list-style: none; display: flex; gap: .8rem; align-items: center; }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::after { content: "+"; margin-left: auto; font-family: var(--mono); color: var(--purple); font-size: 1.2rem; line-height: 1; }
+  details[open] summary::after { content: "–"; }
+  details summary:hover { color: var(--purple); }
+  details .a { padding: 0 1.2rem 1.1rem; color: var(--ink-soft); font-size: .94rem; max-width: 46rem; }
+  details .a p { margin: 0; }
+
+  /* reveal */
+  .rv { opacity: 0; transform: translateY(14px); transition: opacity .5s ease, transform .5s ease; }
+  .rv.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) { .rv { opacity: 1; transform: none; transition: none; } }
+
+  footer.site { border-top: 1px solid var(--rule-soft); margin-top: 3rem; padding: 1.8rem 0 3rem; color: var(--ink-soft); font-size: .86rem; }
+  footer.site .row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+  footer.site p { margin: .35rem 0; }
+  .sig { font-family: var(--mono); font-size: .76rem; color: var(--ink-faint); }
+</style>
+</head>
+<body>
+<div class="glow" aria-hidden="true"><i></i><i></i><i></i></div>
+
+<header class="site">
+  <div class="wrap bar">
+    <a class="brand" href="#top">
+      <img src="icon.png" alt="ReVance Downloader icon" width="36" height="36">
+      <span><b>revanced_downloader</b><small>no-compile manager</small></span>
+    </a>
+    <nav class="links" aria-label="Sections">
+      <a class="hide-s" href="#what">features</a>
+      <a class="hide-s" href="#how">how it works</a>
+      <a href="#release">release</a>
+      <a href="#faq">faq</a>
+      <a class="pill-cta" href="https://github.com/SUVRADEEP2025/revanced_downloader">source</a>
+      <button class="theme-btn" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">◐</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap" id="top">
+  <section class="hero">
+    <div>
+      <div class="badges">
+        <span class="badge"><span class="dot"></span> live on GitHub releases</span>
+        <span class="badge">android · arm64</span>
+        <span class="badge">free · open source</span>
+      </div>
+      <p class="mono-label" style="margin:0 0 .5rem">ReVanced builds, without the build step</p>
+      <h1>ReVance <span class="grad">Downloader</span><span class="sub">ReVanced Manager, minus the compiling.</span></h1>
+      <p class="lede">
+        It lists the builds people publish on GitHub, downloads one, <strong>checks the digest</strong>,
+        and hands it to Android's installer. That's the whole app — no patching pipeline,
+        no Java toolchain, no 20-minute compile to find out your patch set failed.
+      </p>
+      <div class="cta-row">
+        <a class="btn" id="dl" href="https://github.com/SUVRADEEP2025/revanced_downloader/releases/latest">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M4 21h16"/></svg>
+          <span id="dlLabel">Download latest APK</span>
+        </a>
+        <a class="btn ghost" href="https://github.com/SUVRADEEP2025/revanced_downloader">View source</a>
+      </div>
+      <p class="dl-sub">
+        <span>current: <code id="ver">loading…</code></span>
+        <span id="relMeta">checking GitHub…</span>
+        <button class="copy-btn" id="copyBtn" type="button">copy link</button>
+      </p>
+      <ul class="ticks">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>digest-verified before install</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>no account, no patching</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Material You + dark mode</li>
+      </ul>
+      <div class="marquee" aria-hidden="true"><div id="mq">…</div></div>
+    </div>
+
+    <div class="phone-wrap rv">
+      <div class="float-card f1">✓ <span><b>digest match</b><br>sha256 verified</span></div>
+      <div class="phone" role="img" aria-label="Mockup of the ReVance Downloader app listing builds">
+        <div class="screen">
+          <div class="screen-top">
+            <div class="notch"></div>
+            <h3>All Apps</h3>
+            <p>3 repos · updated just now</p>
+          </div>
+          <div class="search">⌕ &nbsp;Search builds…</div>
+          <div class="app-row"><span class="ic" style="background:#6a3de8">Y</span><span><b>youtube-revanced</b><span>v20.12.46 · 98 MB</span></span><span class="go">GET</span></div>
+          <div class="app-row"><span class="ic" style="background:#e11d48">M</span><span><b>music-revanced</b><span>v8.12.53 · 74 MB</span></span><span class="go">GET</span></div>
+          <div class="app-row"><span class="ic" style="background:#0ea5e9">T</span><span><b>twitter-piko</b><span>v10.61 · 61 MB</span></span><span class="go">GET</span></div>
+          <div class="verify"><b>✓ verified &amp; installing…</b><small>sha256 9f3a…c41d · 72%</small><div class="bar-track"><div class="bar-fill"></div></div></div>
+        </div>
+      </div>
+      <div class="float-card f2">▲ <span><b>ntfy heads-up</b><br>new build ping</span></div>
+    </div>
+  </section>
+
+  <section class="block rv" id="what">
+    <div class="sec-head">
+      <span class="sec-num">01</span>
+      <h2>What it does</h2>
+      <p>A tiny browser-plus-installer for GitHub release assets. Seven things, done well.</p>
+    </div>
+    <div class="grid">
+      <article class="card"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4v16h16"/><path d="M7 14l3-3 3 3 4-5 2 2"/></svg></div><h3>Live release feed</h3><p>Pulls the latest assets straight from a GitHub repo, so the list is never stale. Add as many repos as you like — the default one is built in.</p></article>
+      <article class="card"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6z"/><path d="m9 12 2 2 4-4"/></svg></div><h3>Digest check</h3><p>Every download is hashed and compared against the published digest <em>before</em> it touches the installer.</p></article>
+      <article class="card"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M4 21h16"/></svg></div><h3>Installs for you</h3><p>Downloads, verifies, then opens the system installer. Per-repo view keeps <code>arm64</code> + universal APKs; <code>All Apps</code> keeps everything.</p></article>
+      <article class="card"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></div><h3>Search</h3><p>Filter the list by name as it loads. Icons fetch lazily, so a slow network never stalls the page.</p></article>
+      <article class="card"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 8v4l3 2"/></svg></div><h3>History</h3><p>Remembers what you downloaded — name + digest — in a small local database. Handy for spotting whether two builds actually differ.</p></article>
+      <article class="card"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M10 21a2 2 0 0 0 4 0"/></svg></div><h3>Heads-up</h3><p>Subscribes to an ntfy topic and pings you when a matching build shows up. Optional, host configurable.</p></article>
+      <article class="card"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18c1.5 0 2-1 1.5-2.5-.5-1.2.2-2.5 1.5-2.5H17a4 4 0 0 0 4-4c0-5-4-9-9-9z"/><circle cx="8" cy="10" r="1" fill="currentColor"/><circle cx="12" cy="7.5" r="1" fill="currentColor"/><circle cx="16" cy="10" r="1" fill="currentColor"/></svg></div><h3>Material You</h3><p>Follows your wallpaper colours, falls back to a seed colour, and respects dark mode.</p></article>
+    </div>
+  </section>
+
+  <section class="block rv" id="how">
+    <div class="sec-head">
+      <span class="sec-num">02</span>
+      <h2>How you use it</h2>
+      <p>Three taps and you're done. The intro screen walks through permissions.</p>
+    </div>
+    <ol class="steps">
+      <li><h3>Install the APK</h3><p>Grant <b>notifications</b>, <b>storage</b> and <b>install unknown apps</b> when asked. Takes about a minute.</p></li>
+      <li><h3>Pick a repo</h3><p>Use the built-in default, add your own <b>user/repo</b>, or open the <b>All Apps</b> drawer to browse everything at once.</p></li>
+      <li><h3>Tap → verify → install</h3><p>Watch the progress dialog do its thing, then confirm in the system installer. Done.</p></li>
+    </ol>
+  </section>
+
+  <section class="block rv" id="release">
+    <div class="sec-head">
+      <span class="sec-num">03</span>
+      <h2>Fresh out of CI</h2>
+      <p>Live data from GitHub — same feed the app reads.</p>
+    </div>
+    <div class="two">
+      <div class="release">
+        <div class="release-top">
+          <span class="live"><i></i>latest</span>
+          <span class="rel-ver" id="relVer">loading…</span>
+          <span class="rel-date" id="relDate"></span>
+        </div>
+        <ul id="assetList"><li><span class="nm">fetching release assets…</span></li></ul>
+        <div class="rel-foot">
+          <a class="btn small" id="dl2" href="https://github.com/SUVRADEEP2025/revanced_downloader/releases/latest">Download APK</a>
+          <a class="btn small ghost" href="https://github.com/SUVRADEEP2025/revanced_downloader/releases">All releases</a>
+        </div>
+      </div>
+      <aside class="note-card">
+        <p class="mono-label" style="margin:0 0 .4rem">microg?</p>
+        <h3>YouTube builds need GmsCore.</h3>
+        <p>If your build is patched with the GmsCore flag, install GmsCore once: some releases carry it as an extra asset, otherwise grab one from <a href="https://github.com/MorpheApp/MicroG-RE/releases">MorpheApp/MicroG-RE</a>.</p>
+        <div class="kbd-row"><kbd>install unknown apps</kbd><kbd>allow</kbd><kbd>done</kbd></div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="block rv" id="faq">
+    <div class="sec-head">
+      <span class="sec-num">04</span>
+      <h2>Questions</h2>
+      <p>The honest answers, up front.</p>
+    </div>
+    <div class="faq">
+      <details open><summary>Does it patch anything?</summary><div class="a"><p>No. It downloads builds somebody already published as GitHub release assets. If what you want isn't in a release, this app can't make it.</p></div></details>
+      <details><summary>Where do the APKs come from?</summary><div class="a"><p>Wherever you point it. The default is configured at build time; add any GitHub user + repo in the repo manager and remove them again whenever.</p></div></details>
+      <details><summary>Why care about the digest check?</summary><div class="a"><p>It doesn't make an APK more trustworthy than its source. It just catches a truncated download or mismatched file before you install it — the cheap kind of paranoia.</p></div></details>
+      <details><summary>Which devices?</summary><div class="a"><p>Release builds target <code>android-arm64</code> — basically every phone from the last several years. Debug builds from CI can be whatever you compile.</p></div></details>
+      <details><summary>Something crashed.</summary><div class="a"><p>The app reports crashes through Sentry. Filing an issue on <a href="https://github.com/SUVRADEEP2025/revanced_downloader/issues">GitHub</a> with your device model + what you were doing is the fastest fix.</p></div></details>
+      <details><summary>Is this official?</summary><div class="a"><p>No. Unofficial and unaffiliated with the ReVanced project. It just talks to GitHub releases like a browser would.</p></div></details>
+    </div>
+  </section>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="row">
+      <p>Source: <a href="https://github.com/SUVRADEEP2025/revanced_downloader">github.com/SUVRADEEP2025/revanced_downloader</a> · builds ship from GitHub Actions on every push to main.</p>
+      <p class="sig">made because compiling patches on a phone sounded like a bad time.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var btn = document.getElementById('themeBtn');
+  try {
+    var saved = localStorage.getItem('rd-theme');
+    if (saved === 'light' || saved === 'dark') root.setAttribute('data-theme', saved);
+    btn.addEventListener('click', function () {
+      var cur = root.getAttribute('data-theme') || 'auto';
+      var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var isDark = cur === 'dark' || (cur === 'auto' && dark);
+      var next = isDark ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem('rd-theme', next); } catch (e) {}
+    });
+  } catch (e) {}
+
+  // Marquee content (duplicated for seamless loop)
+  var items = ['no compiling', 'no java toolchain', 'digest-checked', 'live github feed', 'arm64', 'material you', 'open source'];
+  var half = items.map(function (t, i) { return '<span>' + (i % 2 ? t : '<b>' + t + '</b>') + ' ·</span>'; }).join('');
+  document.getElementById('mq').innerHTML = half + half;
+
+  // Reveal on scroll
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, { threshold: .12 });
+    document.querySelectorAll('.rv').forEach(function (el) { io.observe(el); });
+  } else {
+    document.querySelectorAll('.rv').forEach(function (el) { el.classList.add('in'); });
+  }
+
+  // Live release info
+  var VER = document.getElementById('ver');
+  var DL = document.getElementById('dl');
+  var DL2 = document.getElementById('dl2');
+  var DLLabel = document.getElementById('dlLabel');
+  var relMeta = document.getElementById('relMeta');
+  var relVer = document.getElementById('relVer');
+  var relDate = document.getElementById('relDate');
+  var list = document.getElementById('assetList');
+  function fmtMB(n) { if (!n && n !== 0) return ''; return (n / 1048576).toFixed(1) + ' MB'; }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+  fetch('https://api.github.com/repos/SUVRADEEP2025/revanced_downloader/releases/latest')
+    .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+    .then(function (rel) {
+      VER.textContent = rel.tag_name;
+      relVer.textContent = rel.tag_name;
+      try { relDate.textContent = '· ' + new Date(rel.published_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); } catch (e) {}
+      var assets = (rel.assets || []).filter(function (a) { return /\.apk$/i.test(a.name); });
+      var apk = assets.find(function (a) { return !/microg|gmscore/i.test(a.name); }) || assets[0];
+      var href = apk ? apk.browser_download_url : rel.html_url;
+      DL.href = href; DL2.href = href;
+      if (apk) {
+        DLLabel.textContent = 'Download ' + apk.name.replace(/\.apk$/i, '');
+        relMeta.textContent = fmtMB(apk.size) + ' · ' + (apk.download_count || 0) + ' downloads';
+      } else {
+        relMeta.textContent = 'see GitHub releases';
+      }
+      if (!assets.length) {
+        list.innerHTML = '<li><span class="nm">No APK assets on this release — see GitHub.</span></li>';
+        return;
+      }
+      list.innerHTML = assets.slice(0, 5).map(function (a) {
+        return '<li><span class="nm">' + esc(a.name) + '</span><span class="sz">' + esc(fmtMB(a.size)) + '</span><a class="dl" href="' + esc(a.browser_download_url) + '">APK</a></li>';
+      }).join('');
+    })
+    .catch(function () {
+      VER.textContent = 'on GitHub';
+      relVer.textContent = 'see GitHub';
+      relMeta.textContent = 'offline? releases live on GitHub';
+      list.innerHTML = '<li><span class="nm">Could not reach api.github.com — open releases directly.</span></li>';
+    });
+
+  document.getElementById('copyBtn').addEventListener('click', function () {
+    var t = this;
+    function done(msg) { t.textContent = msg; setTimeout(function () { t.textContent = 'copy link'; }, 1600); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(DL.href).then(function () { done('copied!'); }, function () { done('copy failed'); });
+    } else { done(DL.href); }
+  });
+})();
+</script>
+</body>
+</html>
