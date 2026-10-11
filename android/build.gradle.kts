@@ -29,6 +29,52 @@ subprojects {
         project.evaluationDependsOn(":app")
     }
 
+    // Force every Android library/application subproject (e.g. sentry_flutter,
+    // flutter_file_downloader which hardcode compileSdk 34) to compile against
+    // SDK 36+. Otherwise `package_info_plus >= 10` fails checkAarMetadata with:
+    // "Dependency ':package_info_plus' requires ... compile against version 36
+    //  or later ... :sentry_flutter is currently compiled against android-34."
+    // Uses reflection so this script compiles without an AGP dependency.
+    afterEvaluate {
+        extensions.findByName("android")?.let { androidExt ->
+            try {
+                val getCompileSdk =
+                    androidExt.javaClass.getMethod("getCompileSdk")
+                val current = getCompileSdk.invoke(androidExt) as? Int ?: 0
+                if (current in 1..35) {
+                    androidExt.javaClass
+                        .getMethod("setCompileSdk", Int::class.javaPrimitiveType)
+                        .invoke(androidExt, 37)
+                }
+            } catch (_: Exception) {
+                try {
+                    val getV =
+                        androidExt.javaClass.getMethod("getCompileSdkVersion")
+                    val current =
+                        getV.invoke(androidExt)?.toString()
+                            ?.removePrefix("android-")?.toIntOrNull() ?: 0
+                    if (current in 1..35) {
+                        try {
+                            androidExt.javaClass
+                                .getMethod(
+                                    "setCompileSdkVersion",
+                                    Int::class.javaPrimitiveType,
+                                ).invoke(androidExt, 37)
+                        } catch (_: Exception) {
+                            androidExt.javaClass
+                                .getMethod(
+                                    "setCompileSdkVersion",
+                                    String::class.java,
+                                ).invoke(androidExt, "android-37")
+                        }
+                    }
+                } catch (_: Exception) {
+                    // Not an Android module — nothing to do.
+                }
+            }
+        }
+    }
+
     // Ensure Java compile settings for subprojects to avoid legacy Java 8 warnings
     tasks.withType<JavaCompile> {
         sourceCompatibility = JavaVersion.VERSION_17.toString()
