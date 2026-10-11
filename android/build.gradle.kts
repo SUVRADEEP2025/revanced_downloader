@@ -37,6 +37,14 @@ subprojects {
         options.compilerArgs.add("-Xlint:deprecation")
     }
 
+    // Force Kotlin compiler options for subprojects (e.g. sentry_flutter hardcoding languageVersion = "1.6")
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+        compilerOptions {
+            languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0)
+            apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0)
+        }
+    }
+
     // Force an AndroidX compatibility artifact so legacy support library references are satisfied
     configurations.all {
         resolutionStrategy {
