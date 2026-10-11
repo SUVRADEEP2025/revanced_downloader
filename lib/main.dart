@@ -1,6 +1,7 @@
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:rd_manager/models/models.dart';
@@ -13,11 +14,19 @@ import 'package:rd_manager/websocket.dart';
 import 'package:rd_manager/notifications.dart';
 import 'dart:async';
 
+/// Sentry DSN — public client key, safe to embed in the app binary.
+const String kSentryDsn =
+    'https://4908a3b922bbc235cadae7907b47deb7@o4510758181208064.ingest.de.sentry.io/4510758182781008';
+
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   globalArgs = args;
 
-  initApp();
+  await SentryFlutter.init((options) {
+    options.dsn = kSentryDsn;
+    // Full tracing while ramping up; lower (e.g. 0.2) if event volume grows.
+    options.tracesSampleRate = 1.0;
+  }, appRunner: initApp);
 }
 
 List<String> globalArgs = <String>[];
