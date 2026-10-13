@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 import 'package:rd_manager/models/github_asset.dart';
 import 'package:rd_manager/models/repo_data.dart';
 import 'package:rd_manager/services/share_service.dart';

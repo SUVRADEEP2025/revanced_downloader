@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rd_manager/main.dart' show kSentryDsn;
 import 'package:rd_manager/services/agent_tracing.dart';
-import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:sentry/sentry.dart';
 
 /// Decorates the SDK's real transport so the test can see what actually
 /// leaves the app. `HttpTransport` returns [SentryId.empty] on any HTTP

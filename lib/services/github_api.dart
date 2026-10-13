@@ -65,11 +65,6 @@ class GithubApi {
   );
 
   static const String _host = 'https://api.github.com';
-
-  /// Returns installable assets (apk/aab) of the latest release of a repo.
-  ///
-  /// When [archFilter] is true only ARM/universal variants are kept
-  /// (per-repo view); the aggregated view keeps every apk/aab instead.
   Future<List<GithubAsset>> fetchLatestAssets(
     String userName,
     String repoName, {
@@ -94,8 +89,6 @@ class GithubApi {
         .toList();
   }
 
-  /// Best-effort icon lookup: derives the package name from the file name
-  /// and queries the app-metadata service. Returns null when unknown.
   Future<String?> fetchIconFor(GithubAsset asset) async {
     final pkg = asset.packageName;
     if (pkg == null) return null;
@@ -158,7 +151,6 @@ Future<String?> fetchAppIcon(String packageName) async {
   }
 }
 
-/// Thin wrapper so the shared static [_metaDio] stays testable/mutable.
 Future<Response<dynamic>> _metaDioGet(
   String path, {
   required Map<String, dynamic> queryParameters,

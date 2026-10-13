@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:rd_manager/services/logger.dart';
+import 'package:sentry/sentry.dart';
 import 'package:flutter_file_downloader/flutter_file_downloader.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:rd_manager/notifications.dart';
@@ -166,6 +168,13 @@ class DownloadCoordinator {
           failureContext = 'launching installer';
           statusNotifier.value = 'Launching installer...';
           await _channel.invokeMethod('installApk', {'path': path});
+          AppLog.info(
+            'Installer launched',
+            attributes: {
+              'download.name': SentryAttribute.string(request.name),
+              'download.url': SentryAttribute.string(request.url),
+            },
+          );
           await NotificationsService.showNotification(
             id: 2,
             title: 'Installation',
@@ -176,7 +185,10 @@ class DownloadCoordinator {
           onCompleted?.call();
         } catch (e) {
           _finish();
-          onError?.call('Download processing failed while $failureContext: $e');
+          AppLog.error(
+            'Download post-processing failed ($failureContext)',
+            exception: e,
+          );
         }
       },
     );

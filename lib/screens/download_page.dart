@@ -1,8 +1,8 @@
-import 'dart:developer';
+// import 'dart:developer';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-
+import 'package:rd_manager/services/logger.dart';
 import 'package:rd_manager/download_coordinator.dart';
 import 'package:rd_manager/models/models.dart';
 import 'package:rd_manager/screens/repo_data_list.dart';
@@ -79,13 +79,10 @@ class _DownloadPageState extends State<DownloadPage> {
       setState(() => _isLoading = false);
 
       // Proactively fetch metadata/icons for assets.
-      await Future.wait([
-        statusFuture,
-        _api.fillMissingIcons(_assets),
-      ]);
+      await Future.wait([statusFuture, _api.fillMissingIcons(_assets)]);
       if (mounted) setState(() {});
     } on DioException catch (e) {
-      log(e.toString());
+      AppLog.error('Failed to fetch releases (Dio)', exception: e);
       if (!mounted) return;
       setState(() {
         _isLoading = false;
@@ -97,7 +94,7 @@ class _DownloadPageState extends State<DownloadPage> {
             : 'Failed to fetch releases: ${e.message}';
       });
     } catch (e) {
-      log(e.toString());
+      AppLog.error('Failed to load releases', exception: e);
       if (!mounted) return;
       setState(() {
         _isLoading = false;
@@ -145,14 +142,14 @@ class _DownloadPageState extends State<DownloadPage> {
           name: asset.name,
           url: asset.downloadUrl,
           digest: asset.digest,
-        ),                        onCompleted: () {
-                          if (!mounted) return;
-                          if (Navigator.canPop(context)) Navigator.pop(context);
-                          _snack('Installation started');
-                          // Mark the asset as downloaded right away.
-                          AssetStatusService.instance.invalidateDownloads();
-                          _refreshStatuses();
-                        },
+        ),
+        onCompleted: () {
+          if (!mounted) return;
+          if (Navigator.canPop(context)) Navigator.pop(context);
+          _snack('Installation started');
+          AssetStatusService.instance.invalidateDownloads();
+          _refreshStatuses();
+        },
         onError: (message) {
           if (!mounted) return;
           if (Navigator.canPop(context)) Navigator.pop(context);
@@ -160,7 +157,7 @@ class _DownloadPageState extends State<DownloadPage> {
         },
       );
     } catch (e, st) {
-      log('Failed to start download: $e', stackTrace: st);
+      AppLog.error('Failed to start download', exception: e, stackTrace: st);
       if (!mounted) return;
       if (Navigator.canPop(context)) Navigator.pop(context);
       _snack('Failed to start download');

@@ -1,4 +1,3 @@
-/// A single downloadable asset attached to a GitHub release.
 class GithubAsset {
   final int id;
   String? imageLink;

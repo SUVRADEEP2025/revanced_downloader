@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:sentry/sentry.dart';
 
 /// Manual Agent Tracing instrumentation for the app.
 ///

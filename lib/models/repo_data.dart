@@ -1,8 +1,8 @@
 import 'dart:convert';
-import 'dart:developer';
+// import 'dart:developer';
 
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:rd_manager/services/logger.dart';
 import 'package:rd_manager/secrets.dart' as secrets;
 
 /// Lightweight value object representing a repository.
@@ -88,7 +88,7 @@ class RepoStorage {
             result.add(RepoData.fromJson(Map<String, dynamic>.from(decoded)));
           }
         } catch (e) {
-          log('Malformed entry: $e');
+          AppLog.error('Malformed entry: $e');
           // keep running on malformed entries
         }
       }

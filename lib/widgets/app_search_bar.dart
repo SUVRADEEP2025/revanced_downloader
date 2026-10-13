@@ -1,12 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// A reusable search field with a built-in clear button.
-///
-/// Listens to its [TextEditingController], so every text change —
-/// typing, autofill, or the clear button — flows through one path:
-/// state update + [onChanged] callback. The clear button appears only
-/// while the query is non-empty and resets the field, reporting an
-/// empty string through [onChanged].
 class AppSearchBar extends StatefulWidget {
   const AppSearchBar({
     super.key,
@@ -16,12 +9,8 @@ class AppSearchBar extends StatefulWidget {
   });
 
   final String? hintText;
-
-  /// Called on every query change with the current text.
   final ValueChanged<String> onChanged;
 
-  /// Optional externally-owned controller. If omitted, an internal
-  /// controller is created and disposed with the widget.
   final TextEditingController? controller;
 
   @override

@@ -49,7 +49,11 @@ class AssetListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final (Color tint, IconData statusIcon, String statusLabel) = switch (status) {
+    final (
+      Color tint,
+      IconData statusIcon,
+      String statusLabel,
+    ) = switch (status) {
       AssetStatus.downloaded => (
         Colors.green,
         Icons.download_done_rounded,

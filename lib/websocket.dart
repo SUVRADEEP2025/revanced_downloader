@@ -1,8 +1,8 @@
 import 'dart:convert';
-import 'dart:developer';
 import 'package:rd_manager/notifications.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'secrets.dart';
+import 'package:rd_manager/services/logger.dart';
 
 class WebSocketService {
   static WebSocketChannel? _channel;
@@ -26,19 +26,19 @@ class WebSocketService {
                 );
               }
             } catch (e) {
-              log('Failed to parse WebSocket message: $e');
+              AppLog.error('Failed to parse websocket message', exception: e);
             }
           }
         },
         onError: (error) {
-          log('WebSocket Error: $error');
+          AppLog.error('Websocket error', exception: error);
         },
         onDone: () {
-          log('WebSocket Connection Closed');
+          AppLog.info('WebSocket Connection Closed');
         },
       );
     } catch (e) {
-      log('WebSocket Initialization Error: $e');
+      AppLog.error('Failed to init websocket', exception: e);
     }
   }
 

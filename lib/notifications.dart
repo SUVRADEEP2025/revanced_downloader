@@ -1,4 +1,4 @@
-import 'dart:developer';
+import 'package:rd_manager/services/logger.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationsService {
@@ -20,7 +20,7 @@ class NotificationsService {
       await _plugin.initialize(settings: initSettings);
       _initialized = true;
     } catch (e) {
-      log('Error initializing notifications: $e');
+      AppLog.error('Failed to init notifications', exception: e);
     }
   }
 
@@ -32,7 +32,7 @@ class NotificationsService {
     await init();
 
     if (!_initialized) {
-      log('Notifications not initialized, skipping notification');
+      AppLog.warn('Notifications not initialized, skipping notification');
       return;
     }
 
@@ -61,7 +61,7 @@ class NotificationsService {
     await init();
 
     if (!_initialized) {
-      log('Notifications not initialized, skipping registration');
+      AppLog.warn('Notifications not initialized, skipping registration');
       return;
     }
   }

@@ -31,9 +31,15 @@ jobs:
           repository: ${{ github.repository }}
           retain_days: ${{ inputs.retain_days || '0' }}
           keep_minimum_runs: ${{ inputs.keep_minimum_runs || '0' }}
+      - uses: actions/checkout@main
+      - uses: Nats-ji/delete-old-releases@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          keep-count: 2
+          keep-old-minor-releases: false
+          keep-old-minor-releases-count: 1
 
       - name: Squash PR
         uses: robotology/gh-action-squash@master
         env:
           GITHUB_TOKEN: ${{ github.token }}
-
